@@ -1,8 +1,12 @@
 package com.livecoding.dio.delivery.controller;
 
+import com.livecoding.dio.delivery.dto.DeliveryDto;
 import com.livecoding.dio.delivery.exception.ResourceNotFoundException;
+import com.livecoding.dio.delivery.feign.FeignOrder;
+import com.livecoding.dio.delivery.feign.Order;
 import com.livecoding.dio.delivery.model.Delivery;
 import com.livecoding.dio.delivery.repository.DeliveryRepository;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +23,8 @@ public class DeliveryController {
     @Autowired
     private DeliveryRepository deliveryRepository;
 
+    @Autowired
+    private FeignOrder feignOrder;
 
     @GetMapping("/delivery")
     public List<Delivery> getAllDelivery(){
@@ -26,9 +32,13 @@ public class DeliveryController {
     }
 
     @GetMapping("/delivery/{id}")
-    public ResponseEntity<Delivery> getDeliveryById(@PathVariable(value="id") Long deliveryId) throws ResourceNotFoundException {
+    public ResponseEntity<DeliveryDto> getDeliveryById(@PathVariable(value="id") Long deliveryId) throws ResourceNotFoundException {
         Delivery delivery = deliveryRepository.findById(deliveryId).orElseThrow( ()-> new ResourceNotFoundException("Order not found: "+deliveryId) );
-        return  ResponseEntity.ok().body(delivery);
+        Order order = feignOrder.getOrderById(delivery.getOrderId());
+        DeliveryDto deliveryDto = new DeliveryDto();
+        BeanUtils.copyProperties(delivery, deliveryDto);
+        deliveryDto.setOrder(order);
+        return  ResponseEntity.ok().body(deliveryDto);
     }
 
     @PostMapping("/delivery")
