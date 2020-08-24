@@ -1,8 +1,12 @@
 package com.livecoding.dio.order.controller;
 
+import com.livecoding.dio.order.dto.OrderDto;
 import com.livecoding.dio.order.exception.ResourceNotFoundException;
+import com.livecoding.dio.order.feign.Customer;
+import com.livecoding.dio.order.feign.FeignCustomer;
 import com.livecoding.dio.order.model.Order;
 import com.livecoding.dio.order.repository.OrderRepository;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +23,9 @@ public class OrderController {
     @Autowired
     private OrderRepository orderRepository;
 
+    @Autowired
+    private FeignCustomer feignCustomer;
+
 
     @GetMapping("/orders")
     public List<Order> getAllOrders(){
@@ -26,9 +33,13 @@ public class OrderController {
     }
 
     @GetMapping("/order/{id}")
-    public ResponseEntity<Order> getOrderById(@PathVariable(value="id") Long orderId) throws ResourceNotFoundException {
+    public ResponseEntity<OrderDto> getOrderById(@PathVariable(value="id") Long orderId) throws ResourceNotFoundException {
         Order order = orderRepository.findById(orderId).orElseThrow( ()-> new ResourceNotFoundException("Order not found: "+orderId) );
-        return  ResponseEntity.ok().body(order);
+        Customer customer = feignCustomer.getCustomerById(order.getCustomer_id());
+        OrderDto orderDto =  new OrderDto();
+        BeanUtils.copyProperties(order, orderDto);
+        orderDto.setCustomer(customer);
+        return  ResponseEntity.ok().body(orderDto);
     }
 
     @PostMapping("/order")
